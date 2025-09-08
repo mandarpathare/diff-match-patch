@@ -6,6 +6,7 @@
 #include <variant>
 #include <sstream>
 #include <vector>
+#include <iterator>
 
 namespace std {
 using wstring_list = std::vector<std::wstring>;

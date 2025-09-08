@@ -53,12 +53,12 @@
 
 /**-
  * The data structure representing a diff is a Linked list of Diff objects:
- * {Diff(Operation.DELETE, "Hello"), Diff(Operation.INSERT, "Goodbye"),
+ * {Diff(Operation.DMP_DEL, "Hello"), Diff(Operation.INSERT, "Goodbye"),
  *  Diff(Operation.EQUAL, " world.")}
  * which means: delete "Hello", add "Goodbye" and keep " world."
  */
 enum Operation {
-    DELETE, INSERT, EQUAL
+    DMP_DEL, INSERT, EQUAL
 };
 
 
@@ -68,13 +68,13 @@ enum Operation {
 class Diff {
 public:
     Operation operation;
-    // One of: INSERT, DELETE or EQUAL.
+    // One of: INSERT, DMP_DEL or EQUAL.
     std::wstring text;
     // The text associated with this diff operation.
     bool invalid;
     /**
      * Constructor.  Initializes the diff with the provided values.
-     * @param operation One of INSERT, DELETE or EQUAL.
+     * @param operation One of INSERT, DMP_DEL or EQUAL.
      * @param text The text being applied.
      */
     Diff(Operation _operation, const std::wstring &_text);

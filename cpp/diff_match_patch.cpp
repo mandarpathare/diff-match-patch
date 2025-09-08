@@ -40,7 +40,7 @@
 
 /**
  * Constructor.  Initializes the diff with the provided values.
- * @param operation One of INSERT, DELETE or EQUAL
+ * @param operation One of INSERT, DMP_DEL or EQUAL
  * @param text The text being applied
  */
 Diff::Diff(Operation _operation, const std::wstring &_text) :
@@ -60,8 +60,8 @@ std::wstring Diff::strOperation(Operation op) {
     switch (op) {
     case INSERT:
         return L"INSERT";
-    case DELETE:
-        return L"DELETE";
+    case DMP_DEL:
+        return L"DMP_DEL";
     case EQUAL:
         return L"EQUAL";
     }
@@ -151,7 +151,7 @@ std::wstring Patch::toString() const {
         case INSERT:
             text += std::wstring(L"+");
             break;
-        case DELETE:
+        case DMP_DEL:
             text += std::wstring(L"-");
             break;
         case EQUAL:
@@ -252,7 +252,7 @@ std::list<Diff> diff_match_patch::diff_compute(std::wstring text1, std::wstring 
 
     if (text2.empty()) {
         // Just delete some text (speedup).
-        diffs.push_back(Diff(DELETE, text1));
+        diffs.push_back(Diff(DMP_DEL, text1));
         return diffs;
     }
 
@@ -262,7 +262,7 @@ std::list<Diff> diff_match_patch::diff_compute(std::wstring text1, std::wstring 
         const auto i = longtext.find(shorttext);
         if (i != std::wstring::npos) {
             // Shorter text is inside the longer text (speedup).
-            const Operation op = (text1.length() > text2.length()) ? DELETE : INSERT;
+            const Operation op = (text1.length() > text2.length()) ? DMP_DEL : INSERT;
             diffs.push_back(Diff(op, longtext.substr(0, i)));
             diffs.push_back(Diff(EQUAL, shorttext));
             diffs.push_back(Diff(op, safeMid(longtext, i + shorttext.length())));
@@ -272,7 +272,7 @@ std::list<Diff> diff_match_patch::diff_compute(std::wstring text1, std::wstring 
         if (shorttext.length() == 1) {
             // Single character string.
             // After the previous speedup, the character can't be an equality.
-            diffs.push_back(Diff(DELETE, text1));
+            diffs.push_back(Diff(DMP_DEL, text1));
             diffs.push_back(Diff(INSERT, text2));
             return diffs;
         }
@@ -343,7 +343,7 @@ std::list<Diff> diff_match_patch::diff_lineMode(std::wstring text1, std::wstring
             count_insert++;
             text_insert += thisDiff->text;
             break;
-        case DELETE:
+        case DMP_DEL:
             count_delete++;
             text_delete += thisDiff->text;
             break;
@@ -490,7 +490,7 @@ std::list<Diff> diff_match_patch::diff_bisect(const std::wstring &text1,
     // Diff took too long and hit the deadline or
     // number of diffs equals number of characters, no commonality at all.
     std::list<Diff> diffs;
-    diffs.push_back(Diff(DELETE, text1));
+    diffs.push_back(Diff(DMP_DEL, text1));
     diffs.push_back(Diff(INSERT, text2));
     return diffs;
 }
@@ -784,7 +784,7 @@ void diff_match_patch::diff_cleanupSemantic(std::list<Diff> &diffs) {
                 thisDiff = &(*pointer);
 
                 // Replace equality with a delete.
-                *pointer = Diff(DELETE, lastequality);
+                *pointer = Diff(DMP_DEL, lastequality);
                 // Insert a corresponding an insert.
                 pointer = std::next(diffs.insert(pointer, Diff(INSERT, lastequality)));
 
@@ -831,7 +831,7 @@ void diff_match_patch::diff_cleanupSemantic(std::list<Diff> &diffs) {
     thisDiff = std::safe_next_element_ptr(diffs, pointer);
 
     while (thisDiff != NULL) {
-        if (prevDiff->operation == DELETE &&
+        if (prevDiff->operation == DMP_DEL &&
             thisDiff->operation == INSERT) {
             std::wstring deletion = prevDiff->text;
             std::wstring insertion = thisDiff->text;
@@ -859,7 +859,7 @@ void diff_match_patch::diff_cleanupSemantic(std::list<Diff> &diffs) {
                     prevDiff->operation = INSERT;
                     prevDiff->text =
                             insertion.substr(0, insertion.length() - overlap_length2);
-                    thisDiff->operation = DELETE;
+                    thisDiff->operation = DMP_DEL;
                     thisDiff->text = safeMid(deletion, overlap_length2);
                     // pointer.insert inserts the element before the cursor, so there is
                     // no need to step past the new element.
@@ -1039,7 +1039,7 @@ void diff_match_patch::diff_cleanupEfficiency(std::list<Diff> &diffs) {
             post_ins = post_del = false;
         } else {
             // An insertion or deletion.
-            if (thisDiff->operation == DELETE) {
+            if (thisDiff->operation == DMP_DEL) {
                 post_del = true;
             } else {
                 post_ins = true;
@@ -1065,7 +1065,7 @@ void diff_match_patch::diff_cleanupEfficiency(std::list<Diff> &diffs) {
                 }
 
                 // Replace equality with a delete.
-                *pointer = Diff(DELETE, lastequality);
+                *pointer = Diff(DMP_DEL, lastequality);
                 // Insert a corresponding an insert.
                 pointer = std::next(diffs.insert(pointer, Diff(INSERT, lastequality)));
 
@@ -1126,7 +1126,7 @@ void diff_match_patch::diff_cleanupMerge(std::list<Diff> &diffs) {
             text_insert += thisDiff->text;
             prevEqual = NULL;
             break;
-        case DELETE:
+        case DMP_DEL:
             count_delete++;
             text_delete += thisDiff->text;
             prevEqual = NULL;
@@ -1171,7 +1171,7 @@ void diff_match_patch::diff_cleanupMerge(std::list<Diff> &diffs) {
                 }
                 // Insert the merged records.
                 if (!text_delete.empty()) {
-                    pointer = std::next(diffs.insert(pointer, Diff(DELETE, text_delete)));
+                    pointer = std::next(diffs.insert(pointer, Diff(DMP_DEL, text_delete)));
                 }
                 if (!text_insert.empty()) {
                     pointer = std::next(diffs.insert(pointer, Diff(INSERT, text_insert)));
@@ -1262,7 +1262,7 @@ int diff_match_patch::diff_xIndex(const std::list<Diff> &diffs, int loc) {
             // Equality or deletion.
             chars1 += aDiff.text.length();
         }
-        if (aDiff.operation != DELETE) {
+        if (aDiff.operation != DMP_DEL) {
             // Equality or insertion.
             chars2 += aDiff.text.length();
         }
@@ -1274,7 +1274,7 @@ int diff_match_patch::diff_xIndex(const std::list<Diff> &diffs, int loc) {
         last_chars1 = chars1;
         last_chars2 = chars2;
     }
-    if (lastDiff.operation == DELETE) {
+    if (lastDiff.operation == DMP_DEL) {
         // The location was deleted.
         return last_chars2;
     }
@@ -1297,7 +1297,7 @@ std::wstring diff_match_patch::diff_prettyHtml(const std::list<Diff> &diffs) {
             html += std::wstring(L"<ins style=\"background:#e6ffe6;\">") + text
                     + std::wstring(L"</ins>");
             break;
-        case DELETE:
+        case DMP_DEL:
             html += std::wstring(L"<del style=\"background:#ffe6e6;\">") + text
                     + std::wstring(L"</del>");
             break;
@@ -1324,7 +1324,7 @@ std::wstring diff_match_patch::diff_text1(const std::list<Diff> &diffs) {
 std::wstring diff_match_patch::diff_text2(const std::list<Diff> &diffs) {
     std::wstring text;
     for(const auto & aDiff : diffs) {
-        if (aDiff.operation != DELETE) {
+        if (aDiff.operation != DMP_DEL) {
             text += aDiff.text;
         }
     }
@@ -1341,7 +1341,7 @@ int diff_match_patch::diff_levenshtein(const std::list<Diff> &diffs) {
         case INSERT:
             insertions += aDiff.text.length();
             break;
-        case DELETE:
+        case DMP_DEL:
             deletions += aDiff.text.length();
             break;
         case EQUAL:
@@ -1368,7 +1368,7 @@ std::wstring diff_match_patch::diff_toDelta(const std::list<Diff> &diffs) {
             text += std::wstring(L"+") + encoded + std::wstring(L"\t");
             break;
         }
-        case DELETE:
+        case DMP_DEL:
             text += std::wstring(L"-") + std::to_wstring(aDiff.text.length())
                     + std::wstring(L"\t");
             break;
@@ -1418,7 +1418,7 @@ std::list<Diff> diff_match_patch::diff_fromDelta(const std::wstring &text1,
             if (token[0] == char('=')) {
                 diffs.push_back(Diff(EQUAL, text));
             } else {
-                diffs.push_back(Diff(DELETE, text));
+                diffs.push_back(Diff(DMP_DEL, text));
             }
             break;
         }
@@ -1697,7 +1697,7 @@ std::list<Patch> diff_match_patch::patch_make(const std::wstring &text1,
             postpatch_text = postpatch_text.substr(0, char_count2)
                     + aDiff.text + safeMid(postpatch_text, char_count2);
             break;
-        case DELETE:
+        case DMP_DEL:
             patch.length1 += aDiff.text.length();
             patch.diffs.push_back(aDiff);
             postpatch_text = postpatch_text.substr(0, char_count2)
@@ -1733,7 +1733,7 @@ std::list<Patch> diff_match_patch::patch_make(const std::wstring &text1,
         if (aDiff.operation != INSERT) {
             char_count1 += aDiff.text.length();
         }
-        if (aDiff.operation != DELETE) {
+        if (aDiff.operation != DMP_DEL) {
             char_count2 += aDiff.text.length();
         }
     }
@@ -1844,14 +1844,14 @@ std::pair<std::wstring, std::vector<bool> > diff_match_patch::patch_apply(
                                 // Insertion
                                 text = text.substr(0, start_loc + index2) + aDiff.text
                                         + safeMid(text, start_loc + index2);
-                            } else if (aDiff.operation == DELETE) {
+                            } else if (aDiff.operation == DMP_DEL) {
                                 // Deletion
                                 text = text.substr(0, start_loc + index2)
                                         + safeMid(text, start_loc + diff_xIndex(diffs,
                                                                                 index1 + aDiff.text.length()));
                             }
                         }
-                        if (aDiff.operation != DELETE) {
+                        if (aDiff.operation != DMP_DEL) {
                             index1 += aDiff.text.length();
                         }
                     }
@@ -1969,7 +1969,7 @@ void diff_match_patch::patch_splitMax(std::list<Patch> &patches) {
                     patch.diffs.push_back(bigpatch.diffs.front());
                     bigpatch.diffs.pop_front();
                     empty = false;
-                } else if (diff_type == DELETE && patch.diffs.size() == 1
+                } else if (diff_type == DMP_DEL && patch.diffs.size() == 1
                            && patch.diffs.front().operation == EQUAL
                            && diff_text.length() > 2 * patch_size) {
                     // This is a large deletion.  Let it pass in one chunk.
@@ -2088,7 +2088,7 @@ std::list<Patch> diff_match_patch::patch_fromText(const std::wstring &textline) 
             line = std::url_decode(line);
             if (sign == '-') {
                 // Deletion.
-                patch.diffs.push_back(Diff(DELETE, line));
+                patch.diffs.push_back(Diff(DMP_DEL, line));
             } else if (sign == '+') {
                 // Insertion.
                 patch.diffs.push_back(Diff(INSERT, line));
